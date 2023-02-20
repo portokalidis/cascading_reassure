@@ -1,0 +1,10 @@
+To compile on windows we use VC10 and cygwin with make.
+Copy cl.bat and lib.bat from cygwin_wrappers to a directory in your path in
+cygwin, e.g., in /usr/local/bin, and make sure that the MSVC compiler is in your
+path. For example, add it with the following:
+PATH="/cygdrive/c/Program Files/Microsoft Visual Studio 10.0/VC/bin/":$PATH
+export PATH
+
+We also assume that the environment variable $VS100COMNTOOLS exists. We use that
+to locate the vsvars32.bat file that sets up the build environment.
+

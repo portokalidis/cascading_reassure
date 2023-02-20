@@ -1,0 +1,33 @@
+ifeq ($(OS),Windows_NT)
+
+ifeq ($(DEBUG), 1)
+CXXFLAGS=/Od /Zi /DDEBUG
+else
+CXXFLAGS=/O2
+LDFLAGS=/OPT:REF
+endif
+CC=cl.bat
+CXX=cl.bat
+LIBEXT=lib
+COMP_OBJ=/c /Fo
+SLINK=lib.bat
+SLINK_OUT=/OUT:
+
+
+else
+
+CXXFLAGS=-Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Werror
+
+ifeq ($(DEBUG), 1)
+CXXFLAGS+=-O0 -g -ggdb -DDEBUG
+else
+CXXFLAGS+=-O3
+endif
+CC=gcc
+CXX=g++
+LIBEXT=a
+COMP_OBJ=-c -o
+SLINK=ar
+SLINK_OUT=rcs 
+
+endif

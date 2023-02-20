@@ -1,0 +1,3 @@
+/* Notes on Cascading Reassure implementation */
+
+-- If the sender is invoced with "localhost" as the parameter instead of the receiver's IP (even if both sender and receiver are on the same machine), the closure of the connection should be delayed (with sleep()), otherwise the SIGURG signal is not sent and therefore its handler, which receives the OOB byte, is not invoked.

@@ -1,0 +1,64 @@
+#
+# PIN related stuff
+#
+
+ifndef HOST_ARCH
+    HST := $(shell uname -m)
+    ifeq ($(HST),x86)
+        HOST_ARCH := ia32
+    endif
+    ifeq ($(HST),i386)
+        HOST_ARCH := ia32
+    endif
+    ifeq ($(HST),i686)
+        HOST_ARCH := ia32
+    endif
+    ifeq ($(HST),x86_64)
+        HOST_ARCH := intel64
+    endif
+    ifeq ($(HST),amd64)
+        HOST_ARCH := intel64
+    endif
+
+    # Verify known host
+    ifndef HOST_ARCH
+        $(error Could not detect the host architecture. Please define HOST_ARCH from the command line.)
+    endif
+endif
+
+ifeq ($(HOST_ARCH),ia32)
+    BITS             := 32
+    TARGETDEF        := IA32
+    PIN_MACH_LDFLAGS := /MACHINE:x86 /ENTRY:Ptrace_DllMainCRTStartup@12
+    PIN_MACH_LDFLAGS += /BASE:0x55000000
+else
+    BITS             := 64
+    TARGETDEF        := IA32E
+    PIN_MACH_LDFLAGS := /MACHINE:x64 /ENTRY:Ptrace_DllMainCRTStartup
+    PIN_MACH_LDFLAGS += /BASE:0xC5000000
+endif
+
+
+PIN_HOME := $(shell cygpath -w "$(PIN_HOME)")
+
+PIN_INCLUDES := /I"$(PIN_HOME)\source\tools\InstLib" \
+	/I"$(PIN_HOME)\source\include\pin" \
+	/I"$(PIN_HOME)\source\include\pin\gen" \
+	/I"$(PIN_HOME)\extras\components\include" \
+	/I"$(PIN_HOME)\extras\xed2-ia32\include"
+
+PIN_CXXFLAGS := /MT /EHs- /EHa- /wd4530 /DTARGET_WINDOWS \
+	/DBIGARRAY_MULTIPLIER=1 /DUSING_XED /D_CRT_SECURE_NO_DEPRECATE \
+	/D_SECURE_SCL=0 /nologo /Gy \
+	/DTARGET_$(TARGETDEF) /DHOST_$(TARGETDEF)
+
+PIN_LPATHS := /LIBPATH:"$(PIN_HOME)\$(HOST_ARCH)\lib" \
+	/LIBPATH:"$(PIN_HOME)\$(HOST_ARCH)\lib-ext" \
+	/LIBPATH:"$(PIN_HOME)\extras\xed2-$(HOST_ARCH)\lib"
+
+PIN_LDFLAGS := /DLL /EXPORT:main /NODEFAULTLIB $(PIN_MACH_LDFLAGS) \
+	/NOLOGO /INCREMENTAL:NO $(PIN_LPATHS)
+
+PIN_XED_LIBS := libxed.lib libcpmt.lib libcmt.lib pinvm.lib kernel32.lib
+
+PIN_LIBS := pin.lib $(PIN_XED_LIBS) ntdll-$(BITS).lib

@@ -1,0 +1,106 @@
+#!/bin/bash
+
+verbose=0
+configfile="reassure.conf"
+cmdline=""
+rbs=""
+mydir=$0
+ref=""
+notify=""
+timeout=""
+
+PIN_OPTIONS="-follow_execv"
+
+
+function usage {
+	echo "Usage: $0 [OPTIONS] binary arguments ..."
+	echo "  Options: -h             Print this message"
+	echo "  Options: -v             Verbose mode"
+	echo "  Options: -c config_file	Use configuration in config_file"
+	echo "				 (default \"reassure.conf\")"
+	echo "  Options: -t secs        Timeout in seconds"
+	echo "  Options: -N             Use stderr for notifications"
+	echo "  Options: -n name        Executable name used for error reporting"
+	echo "  Options: -r id          Reference id used for error reporting"
+	echo ""
+	exit 1
+}
+
+until [ -z "$1" ]; do
+	if [ $1 = "-h" ]; then
+		usage
+	elif [ $1 = "-v" ]; then
+		verbose=1
+	elif [ $1 = "-N" ]; then
+		notify="-notify 1"
+	elif [ $1 = "-c" ]; then
+		shift
+		if [ -z "$1" ]; then
+			usage
+		elif [ ! -f "$1" ]; then
+			echo "Invalid configuration file \"$1\""
+			usage
+		elif [ ! -r "$1" ]; then
+			echo "Configuration file \"$1\" not accessible"
+			usage
+		fi
+		configfile=$1
+	elif [ $1 = "-b" ]; then
+		rbs="-rb 0"
+		shift
+	elif [ $1 = "-t" ]; then
+		shift
+		if [ -z "$1" ]; then
+			usage
+		fi
+		timeout="-timeout $1"
+	elif [ $1 = "-r" ]; then
+		shift
+		if [ -z "$1" ]; then
+			usage
+		fi
+		ref="-ref $1"
+	elif [ $1 = "-n" ]; then
+		shift
+		if [ -z "$1" ]; then
+			usage
+		fi
+		name="-n $1"
+
+	else
+		break
+	fi
+	shift
+done
+
+
+mydir=`which $mydir`
+mydir=`dirname $mydir`
+if [ ! -f "$mydir/reassure.so" ]; then
+	echo "Cannot find tool at \"$mydir/reassure.so\""
+	exit 1
+fi
+
+if [ -z "$name" ]; then
+	name="-n $1"
+fi
+
+until [ -z "$1" ]; do
+	cmdline=$cmdline"$1 "
+	shift
+done
+
+if [ -z "$cmdline" ]; then
+	usage
+fi
+
+
+cmd="pin $PIN_OPTIONS -t $mydir/reassure.so -c $configfile $name $ref $notify $timeout -- $cmdline"
+
+# Run PIN
+if [ $verbose -gt 0 ]; then
+	echo "Running REASSURE"
+	echo $cmd
+fi
+
+$cmd

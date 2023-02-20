@@ -1,0 +1,17 @@
+Undo certain syscalls (munmap, mmap, open, etc.)
+
+Postpone signals when in a rescue point.
+
+Add a new type of non-reentrant RP.
+
+Obtaining or releasing global locks from within a rescue point may lead to
+deadlocks. See tests/steps_threaded_crashes.c
+
+Checkpoint xchg: Handle sendmsg(), recv(), readv(), writev(), etc.
+
+Checkpoint xchg: Handle cases where we walk into a RP, while already in a
+checkpoint.
+
+Checkpoint xchg: implement "checkpoint and rollback" and "commit" messages.
+
+Checkpoint xchg: handle time-related system call interruption separately.

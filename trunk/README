@@ -1,0 +1,171 @@
+REASSURE - Software self-healing using rescue points and Intel's PIN
+====================================================================
+
+About
+-----
+
+Self-healing using rescue points (RPs) is a mechanism that
+can be used to recover software from unforeseen errors until a more
+permanent remedy, like a patch or update, is available. REASSURE, is a 
+self-contained tool for recovering from such errors
+using RPs. Essentially, RPs are existing code locations that handle certain 
+anticipated errors in the target application, usually by returning
+an error code. REASSURE enables the use of these locations to also
+handle unexpected faults. This is achieved by rolling back execution to
+a RP when a fault occurs, returning a valid error code, and enabling
+the application to gracefully handle the unexpected error itself. 
+
+
+Prequisites
+-----------
+
+- PIN
+You can get PIN from http://www.pintool.org/
+This software was tested with Pin 2.10 r45467 for x86 Linux, but more recent
+versions should also function properly. You can unpack the archive anywhere in
+your system.
+
+Set PIN_HOME to point to your PIN installation.
+
+Example:
+If you installed PIN in '/opt/pin' put the following in your .bashrc or
+.profile:
+
+export PIN_HOME=/opt/pin
+
+Add PIN_HOME to your PATH.
+
+export $PATH=$PATH:$PIN_HOME
+
+-- C & C++ compiler (gcc, g++)
+
+
+Configure
+---------
+
+No special configuration is needed. If you need to edit the default compiler
+used, edit the variables in config.mak:
+- CXX: The c++ compiler.
+- CC: The c compiler.
+
+
+Compiling
+---------
+
+Simply run make.
+
+
+This will create the following files:
+- reassure.so: The PIN tool that implements reassure.
+- cprofile.so: A PIN tool that performs some simply profiling, and reports how
+  many times each program function is called. 
+- conftest.so: A PIN tool that simply checks if any rescue point defined in the
+  configuration file is present when loading a binary.
+
+
+Using
+------
+
+The bash script `reassure_run' is provided to help the user run a binary under
+REASSURE:
+
+reassure_run [-v] [-c config_file] binary arguments ...
+  Options: -h           Print this message
+  Options: -v           Verbose mode
+  Options: -c config_file       Use configuration in config_file
+                                 (default "reassure.conf")
+  Options: -b           Use build-in thread blocking instead of signals
+
+For example: reassure_run -c reassure_demo.conf -- ls -l
+
+The rescue points are defined in the configuration file as explained below.
+When an error occurs REASSURE intercepts it, and if within a rescue point,
+it recovers the program after printing a message. Otherwise, it delivers the
+exception to the program, which will probably terminate it.
+
+
+Configuration file - defining rescue points 
+-------------------------------------------
+
+Rescue points (RPs) are defined in the configuration file, one per line.
+Every rescue points is configured using 5 values, seperated by whitespace
+(e.g., a space or tab). The format is the following:
+RP_identification	RP_location	Returns_value?	Return_value RP_type
+
+RP_identification ::= SYM | ADDR
+	SYM is for a RP identified by name. For example, if the binary
+	contains function names, and we know the name of the function that will
+	be used as a RP.
+	ADDR is for a RP identified by address. For example, if the binary does
+	not contain function names, but we know the address of the function that
+	will be used as a RP.
+
+RP_location := <function_name> | <function_addr>
+	The function name of address (in hex) depending on the value of
+	RP_identification.
+
+Returns_value? := V | N
+	V should be used for most RPs. It specifies that the RP will return an
+	error value (as specified by the next field) upon recovery from error.
+	N should be used only in rare cases, where no appropriate RP, that
+	returns an error code, is found. It specifies that the RP has not return
+	value.
+
+Return_value := <integer>
+	The value returned by the RP in the case of an error. It is ignored if
+	Returns_value? is N, but still needs to be present.
+
+RP_type := IgnoreOthers | BlockOthers
+	IgnoreOthers RPs operate under the assumption that the changes performed
+	within them are not visible by other threads, and as such all other
+	threads can execute uninterrupted.
+	BlockOthers RPs block all other threads when the RP is entered to
+	prevent other threads from reading modified data, which may be reverted
+	in the case of an error. These should be used carefully, as if the RP
+	tries to obtain a lock already held by another thread, it can be
+	deadlocked.
+
+
+Examples:
+SYM     needs_saving    V       0       BlockOthers
+SYM     switch_message  V       -1      IgnoreOthers
+
+
+Limitations
+-----------
+
+REASSURE does not undo the effects of system calls.
+If a lock is modified within a rescue point, recovery may lead to a deadlock.
+
+
+Examples
+--------
+
+Change into the tests directory and run `make'.
+
+- steps_crashes contains a fatal bug. Running natively crashes the binary
+$./steps_crashes 
+This is the 1st step 1
+This is the 2nd step 3
+This is the 3rd step 7
+Segmentation fault
+
+- Running reassure with a rescue point allows the binary to continue execution
+$../reassure -c ../reassure_demo.conf -n sc steps_crashes
+This is the 1st step 1
+This is the 2nd step 3
+This is the 3rd step 7
+Returned -1
+
+$cat pintool.log
+....
+ PIN [0] WARNING performing system call 4 in checkpoint
+ PIN [0] WARNING performing system call 4 in checkpoint
+ !!!Fault within rescue point, rolling back!!!
+ <structured_message>
+	<message_type>technical_impact</message_type>
+	<impact>DOS_INSTABILITY</impact>
+	<test_case>sc</test_case>
+</structured_message>
+ <minestrone>EXIT_SUCCESS</minestrone>
+

@@ -1,0 +1,56 @@
+#
+# PIN related stuff
+#
+
+ifndef HOST_ARCH
+    HST := $(shell uname -m)
+    ifeq ($(HST),x86)
+        HOST_ARCH := ia32
+    endif
+    ifeq ($(HST),i386)
+        HOST_ARCH := ia32
+    endif
+    ifeq ($(HST),i686)
+        HOST_ARCH := ia32
+    endif
+    ifeq ($(HST),x86_64)
+        HOST_ARCH := intel64
+    endif
+    ifeq ($(HST),amd64)
+        HOST_ARCH := intel64
+    endif
+
+    # Verify known host
+    ifndef HOST_ARCH
+        $(error Could not detect the host architecture. Please define HOST_ARCH from the command line.)
+    endif
+endif
+
+ifeq ($(HOST_ARCH),ia32)
+    TARGETDEF := IA32
+else
+    TARGETDEF := IA32E
+endif
+
+
+PIN_INCLUDES := -I$(PIN_HOME)/source/tools/InstLib \
+	-I$(PIN_HOME)/source/include/pin -I$(PIN_HOME)/source/include/pin/gen \
+	-I$(PIN_HOME)/extras/components/include \
+	-I$(PIN_HOME)/extras/xed2-$(HOST_ARCH)/include \
+
+PIN_CXXFLAGS := -DBIGARRAY_MULTIPLIER=1 -DUSING_XED -fno-strict-aliasing \
+	-unknown-pragmas -fomit-frame-pointer -fno-stack-protector \
+	-DTARGET_$(TARGETDEF) -DHOST_$(TARGETDEF) -DTARGET_LINUX -fPIC
+
+PIN_LFLAGS := -L$(PIN_HOME)/$(HOST_ARCH)/lib \
+	-L$(PIN_HOME)/$(HOST_ARCH)/lib-ext \
+	-L$(PIN_HOME)/extras/xed2-$(HOST_ARCH)/lib
+
+PIN_LDFLAGS := -shared -Wl,--hash-style=sysv -Wl,-Bsymbolic \
+	-Wl,--version-script=$(PIN_HOME)/source/include/pin/pintool.ver \
+	$(PIN_LFLAGS)
+
+PIN_XED_LIBS := -lxed -ldwarf -lelf -ldl
+
+PIN_LIBS := -lpin $(PIN_XED_LIBS)
+
